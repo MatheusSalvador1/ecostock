@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoStock — Acesso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0f1a10; --surface: #172118; --surface2: #1e2d1f;
+            --green-700: #2e7d32; --green-500: #4caf50; --accent: #00e676;
+            --text: #e8f5e9; --text-dim: #81c784; --border: rgba(76,175,80,0.15);
+            --danger: #ef5350;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; display: flex;
+        }
+
+        /* Left panel — decorativo */
+        .panel-left {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            padding: 60px; position: relative; overflow: hidden;
+        }
+        .panel-left::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 30% 50%, rgba(0,230,118,0.08) 0%, transparent 70%),
+                        radial-gradient(ellipse at 80% 20%, rgba(46,125,50,0.12) 0%, transparent 60%);
+        }
+        .panel-left .logo { font-family: 'Syne', sans-serif; font-size: 3rem; font-weight: 800; color: var(--accent); margin-bottom: 12px; position: relative; }
+        .panel-left .logo i { color: var(--green-500); margin-right: 8px; }
+        .panel-left .tagline { font-size: 1.1rem; color: var(--text-dim); max-width: 380px; line-height: 1.6; position: relative; }
+
+        .decorative-grid {
+            position: absolute; bottom: -60px; right: -60px;
+            width: 400px; height: 400px; opacity: 0.04;
+            background-image: linear-gradient(var(--green-500) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--green-500) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Right panel — formulário */
+        .panel-right {
+            width: 440px; background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; padding: 48px;
+        }
+
+        .form-box { width: 100%; }
+        .form-box h2 { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+        .form-box p { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 36px; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.78rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
+        .input-wrap { position: relative; }
+        .input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 0.9rem; }
+        .form-control {
+            width: 100%; padding: 12px 14px 12px 40px;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text);
+            font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,230,118,0.1); }
+        .form-control::placeholder { color: rgba(255,255,255,0.2); }
+
+        .btn-submit {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, var(--green-700), var(--green-500));
+            color: white; border: none; border-radius: 10px;
+            font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; margin-top: 8px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,230,118,0.2); }
+
+        .form-footer { text-align: center; margin-top: 24px; font-size: 0.85rem; color: var(--text-dim); }
+        .form-footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
+
+        .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .alert-error { background: rgba(239,83,80,0.12); border: 1px solid rgba(239,83,80,0.25); color: #ef9a9a; }
+        .alert-success { background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.25); color: #a5d6a7; }
+        .alert-warning { background: rgba(255,179,0,0.12); border: 1px solid rgba(255,179,0,0.25); color: #ffe082; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .panel-left { padding: 40px 32px 20px; flex: none; }
+            .panel-left .logo { font-size: 2rem; }
+            .panel-right { width: 100%; border-left: none; border-top: 1px solid var(--border); }
+        }
+    </style>
+</head>
+<body>
+    <div class="panel-left">
+        <div class="logo"><i class="fas fa-leaf"></i>EcoStock</div>
+        <p class="tagline">Sistema inteligente de gestão e controle de validade de produtos. Monitoramento em tempo real, auditorias imutáveis e alertas automáticos.</p>
+        <div class="decorative-grid"></div>
+    </div>
+
+    <div class="panel-right">
+        <div class="form-box">
+            <h2>Bem-vindo de volta</h2>
+            <p>Faça login para acessar o painel</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }}">
+                <i class="fas fa-{% if cat=='error' %}exclamation-circle{% elif cat=='success' %}check-circle{% else %}triangle-exclamation{% endif %}"></i>
+                {{ msg }}
+            </div>
+            {% endfor %}
+            {% endwith %}
+
+            <form action="/login" method="POST">
+                <div class="form-group">
+                    <label>Usuário</label>
+                    <div class="input-wrap">
+                        <i class="fas fa-user"></i>
+                        <input class="form-control" type="text" name="login" placeholder="seu.login" required autocomplete="username">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <div class="input-wrap">
+                        <i class="fas fa-lock"></i>
+                        <input class="form-control" type="password" name="senha" placeholder="••••••••" required autocomplete="current-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-right-to-bracket"></i> Acessar Sistema
+                </button>
+            </form>
+
+            <div class="form-footer">
+                Novo no sistema? <a href="/registrar">Criar conta</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

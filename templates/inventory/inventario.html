@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Inventário — EcoStock{% endblock %}
+{% block page_title %}Inventário{% endblock %}
+
+{% block content %}
+<div class="stats-grid" style="margin-bottom:20px">
+    <div class="stat-card info"><div class="stat-icon info"><i class="fas fa-cubes"></i></div><div class="stat-info"><label>Lotes ativos</label><div class="val info" id="sum-lotes">—</div><small>Total de lotes disponíveis para operação.</small></div></div>
+    <div class="stat-card warning"><div class="stat-icon warning"><i class="fas fa-gauge-simple-high"></i></div><div class="stat-info"><label>Estoque baixo</label><div class="val warning" id="sum-baixo">—</div><small>Produtos abaixo do nível mínimo configurado.</small></div></div>
+    <div class="stat-card danger"><div class="stat-icon danger"><i class="fas fa-calendar-xmark"></i></div><div class="stat-info"><label>Vencidos</label><div class="val danger" id="sum-vencidos">—</div><small>Lotes vencidos que exigem descarte ou tratativa.</small></div></div>
+    <div class="stat-card danger"><div class="stat-icon danger"><i class="fas fa-triangle-exclamation"></i></div><div class="stat-info"><label>Críticos</label><div class="val danger" id="sum-criticos">—</div><small>Lotes com vencimento muito próximo.</small></div></div>
+    <div class="stat-card info"><div class="stat-icon info"><i class="fas fa-sack-dollar"></i></div><div class="stat-info"><label>Valor em estoque</label><div class="val info money" id="sum-valor">—</div><small>Capital estimado com base no custo dos lotes.</small></div></div>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+        <h3><i class="fas fa-boxes-stacked" style="margin-right:8px;color:var(--accent)"></i>Resumo por produto</h3>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Produto</th><th>Categoria</th><th>Saldo</th><th>Mínimo</th><th>Valor estoque</th><th>Capital vencido</th><th>Ação</th></tr></thead>
+            <tbody id="tabela-produtos"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-warehouse" style="margin-right:8px;color:var(--warning)"></i>Lotes em estoque</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <input id="inputBusca" class="form-control" style="min-width:260px" placeholder="Buscar produto ou lote..." oninput="filtrar()">
+            <select id="filtroStatus" class="form-control" style="min-width:220px" onchange="filtrar()">
+                <option value="todos">Todos os status</option><option value="Vencido">Vencido</option>
+                <option value="Crítico">Crítico</option><option value="Alerta">Alerta</option>
+                <option value="Aviso">Aviso</option><option value="Baixo">Baixo</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Produto</th><th>Lote</th><th>Qtd</th><th>Custo</th><th>Valor lote</th><th>Validade</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="tabela-corpo"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalBaixa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);align-items:center;justify-content:center;z-index:2000;padding:16px">
+    <div class="card" style="max-width:460px;width:100%">
+        <div class="card-header"><h3>Saída por lote</h3><button class="btn btn-ghost btn-sm" onclick="fecharModalBaixa()">Fechar</button></div>
+        <div class="card-body">
+            <div class="form-group"><label>Quantidade</label><input type="number" id="inputQtdBaixa" class="form-control" min="0.01" step="0.01"></div>
+            <div class="form-group"><label>Motivo</label><select id="inputMotivoBaixa" class="form-control"><option value="">Selecione</option><option value="Venda">Venda</option><option value="Consumo interno">Consumo interno</option><option value="Transferência">Transferência</option><option value="Doação">Doação</option></select></div>
+            <div class="form-group"><label>Observação</label><input type="text" id="inputObsBaixa" class="form-control"></div>
+            <button class="btn btn-primary" style="width:100%" onclick="confirmarBaixa()">Confirmar saída</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalAjuste" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);align-items:center;justify-content:center;z-index:2000;padding:16px">
+    <div class="card" style="max-width:460px;width:100%">
+        <div class="card-header"><h3>Ajuste de lote</h3><button class="btn btn-ghost btn-sm" onclick="fecharModalAjuste()">Fechar</button></div>
+        <div class="card-body">
+            <div class="form-group"><label>Nova quantidade</label><input type="number" id="inputQtdAjuste" class="form-control" min="0" step="0.01"></div>
+            <div class="form-group"><label>Motivo</label><input type="text" id="inputMotivoAjuste" class="form-control" placeholder="Ex: inventário, correção, quebra"></div>
+            <div class="form-group"><label>Observação</label><input type="text" id="inputObsAjuste" class="form-control"></div>
+            <button class="btn btn-primary" style="width:100%" onclick="confirmarAjuste()">Salvar ajuste</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalDescarte" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);align-items:center;justify-content:center;z-index:2000;padding:16px">
+    <div class="card" style="max-width:460px;width:100%">
+        <div class="card-header"><h3>Descartar lote vencido</h3><button class="btn btn-ghost btn-sm" onclick="fecharModalDescarte()">Fechar</button></div>
+        <div class="card-body">
+            <div class="form-group"><label>Quantidade</label><input type="number" id="inputQtdDescarte" class="form-control" min="0.01" step="0.01"></div>
+            <div class="form-group"><label>Motivo</label><select id="inputMotivoDescarte" class="form-control"><option value="">Selecione</option><option value="Vencimento">Vencimento</option><option value="Contaminação">Contaminação</option><option value="Determinação interna">Determinação interna</option></select></div>
+            <div class="form-group"><label>Observação</label><input type="text" id="inputObsDescarte" class="form-control"></div>
+            <button class="btn btn-danger" style="width:100%" onclick="confirmarDescarte()">Confirmar descarte</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dadosEstoque = [], dadosProdutos = [];
+let loteBaixaAtual = null, loteAjusteAtual = null, loteDescarteAtual = null;
+const podeEditar = {{ 'true' if current_user.pode_editar() else 'false' }};
+const podeExcluir = {{ 'true' if current_user.pode_excluir() else 'false' }};
+const money = (v) => Number(v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
+function statusLote(item) {
+    if (item.vencido) return { txt:'Vencido', cls:'badge-vencido' };
+    if (item.dias_restantes <= 7) return { txt:'Crítico', cls:'badge-alerta' };
+    if (item.dias_restantes <= 15) return { txt:'Alerta', cls:'badge-aviso' };
+    if (item.dias_restantes <= 30) return { txt:'Aviso', cls:'badge-aviso' };
+    return { txt:'Normal', cls:'badge-ok' };
+}
+
+async function carregarTudo() {
+    const [rEstoque, rProdutos, rResumo] = await Promise.all([fetch('/api/v1/estoque'), fetch('/api/v1/produtos'), fetch('/api/v1/resumo-estoque')]);
+    dadosEstoque = await rEstoque.json();
+    dadosProdutos = await rProdutos.json();
+    const resumo = await rResumo.json();
+    document.getElementById('sum-lotes').innerText = resumo.totais.lotes_ativos;
+    document.getElementById('sum-baixo').innerText = resumo.totais.estoque_baixo;
+    document.getElementById('sum-vencidos').innerText = resumo.totais.vencidos;
+    document.getElementById('sum-criticos').innerText = resumo.totais.criticos;
+    document.getElementById('sum-valor').innerText = money(resumo.totais.valor_estoque_custo);
+    renderizarProdutos();
+    filtrar();
+}
+
+function renderizarProdutos() {
+    const corpo = document.getElementById('tabela-produtos');
+    corpo.innerHTML = dadosProdutos.length ? dadosProdutos.map(p => {
+        const baixo = Number(p.estoque_total) <= Number(p.estoque_min);
+        return `<tr>
+            <td><strong>${p.nome}</strong><br><small style="color:var(--text-dim)">${p.unidade}</small></td>
+            <td>${p.categoria || '—'}</td>
+            <td>${Number(p.estoque_total).toFixed(2)}</td>
+            <td>${Number(p.estoque_min).toFixed(2)}</td>
+            <td>${money(p.valor_estoque_custo)}</td>
+            <td>${money(p.valor_vencido_custo)}</td>
+            <td>${podeEditar ? `<a class="btn btn-ghost btn-sm" href="/saidas"><i class="fas fa-arrow-up-right-from-square"></i> Movimentar</a>` : `<span class="badge ${baixo ? 'badge-alerta' : 'badge-ok'}">${baixo ? 'Baixo' : 'OK'}</span>`}</td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-dim)">Nenhum produto cadastrado.</td></tr>';
+}
+
+function filtrar() {
+    const termo = document.getElementById('inputBusca').value.toLowerCase();
+    const filtro = document.getElementById('filtroStatus').value;
+    const lista = dadosEstoque.filter(item => {
+        const st = statusLote(item).txt;
+        const baixo = Number(item.estoque_total) <= Number(item.estoque_min);
+        const okStatus = filtro === 'todos' || st === filtro || (filtro === 'Baixo' && baixo);
+        const okTexto = item.nome.toLowerCase().includes(termo) || item.codigo_lote.toLowerCase().includes(termo);
+        return okTexto && okStatus;
+    });
+    renderizarEstoque(lista);
+}
+
+function renderizarEstoque(lista) {
+    const corpo = document.getElementById('tabela-corpo');
+    if (!lista.length) {
+        corpo.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim)">Nenhum item encontrado.</td></tr>';
+        return;
+    }
+    corpo.innerHTML = lista.map(item => {
+        const st = statusLote(item);
+        const acoes = [];
+        if (podeEditar) {
+            if (item.vencido) {
+                acoes.push(`<button class="btn btn-danger btn-sm" onclick="abrirModalDescarte(${item.id}, ${item.quantidade_atual})"><i class="fas fa-trash-can"></i> Descartar</button>`);
+            } else {
+                acoes.push(`<button class="btn btn-ghost btn-sm" onclick="abrirModalBaixa(${item.id})"><i class="fas fa-minus-circle"></i> Saída</button>`);
+            }
+            acoes.push(`<button class="btn btn-ghost btn-sm" onclick="abrirModalAjuste(${item.id}, ${item.quantidade_atual})"><i class="fas fa-pen-to-square"></i> Ajuste</button>`);
+        }
+        if (podeExcluir) acoes.push(`<button class="btn btn-ghost btn-sm" onclick="excluirLote(${item.id}, '${item.codigo_lote}')"><i class="fas fa-trash-alt"></i></button>`);
+        return `<tr>
+            <td><strong>${item.nome}</strong><br><small style="color:var(--text-dim)">${item.codigo_lote}</small></td>
+            <td>${item.codigo_lote}</td>
+            <td>${Number(item.quantidade_atual).toFixed(2)} ${item.unidade}</td>
+            <td>${money(item.custo_unitario)}</td>
+            <td>${money(item.valor_lote_custo)}</td>
+            <td>${new Date(item.data_validade+'T12:00:00').toLocaleDateString('pt-BR')}</td>
+            <td><span class="badge ${st.cls}">${st.txt}</span></td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap">${acoes.join('')}</td>
+        </tr>`;
+    }).join('');
+}
+
+function abrirModalBaixa(id) { loteBaixaAtual = id; document.getElementById('inputQtdBaixa').value='1'; document.getElementById('inputMotivoBaixa').value=''; document.getElementById('inputObsBaixa').value=''; document.getElementById('modalBaixa').style.display='flex'; }
+function fecharModalBaixa() { document.getElementById('modalBaixa').style.display='none'; }
+async function confirmarBaixa() {
+    const quantidade = document.getElementById('inputQtdBaixa').value;
+    const motivo = document.getElementById('inputMotivoBaixa').value;
+    const observacao = document.getElementById('inputObsBaixa').value;
+    const r = await fetch(`/api/v1/lote/${loteBaixaAtual}/baixa`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ quantidade, motivo, observacao })});
+    const d = await r.json(); if (!r.ok) return alert(d.erro || 'Erro na saída'); alert('Saída registrada.'); location.reload();
+}
+
+function abrirModalAjuste(id, saldo) { loteAjusteAtual = id; document.getElementById('inputQtdAjuste').value=saldo; document.getElementById('inputMotivoAjuste').value=''; document.getElementById('inputObsAjuste').value=''; document.getElementById('modalAjuste').style.display='flex'; }
+function fecharModalAjuste() { document.getElementById('modalAjuste').style.display='none'; }
+async function confirmarAjuste() {
+    const nova_quantidade = document.getElementById('inputQtdAjuste').value;
+    const motivo = document.getElementById('inputMotivoAjuste').value;
+    const observacao = document.getElementById('inputObsAjuste').value;
+    const r = await fetch(`/api/v1/lote/${loteAjusteAtual}/ajuste`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nova_quantidade, motivo, observacao })});
+    const d = await r.json(); if (!r.ok) return alert(d.erro || 'Erro no ajuste'); alert('Ajuste salvo.'); location.reload();
+}
+
+function abrirModalDescarte(id, saldo) { loteDescarteAtual = id; document.getElementById('inputQtdDescarte').value=saldo; document.getElementById('inputMotivoDescarte').value=''; document.getElementById('inputObsDescarte').value=''; document.getElementById('modalDescarte').style.display='flex'; }
+function fecharModalDescarte() { document.getElementById('modalDescarte').style.display='none'; }
+async function confirmarDescarte() {
+    const quantidade = document.getElementById('inputQtdDescarte').value;
+    const motivo = document.getElementById('inputMotivoDescarte').value;
+    const observacao = document.getElementById('inputObsDescarte').value;
+    const r = await fetch(`/api/v1/lote/${loteDescarteAtual}/descartar`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ quantidade, motivo, observacao })});
+    const d = await r.json(); if (!r.ok) return alert(d.erro || 'Erro no descarte'); alert(`Descarte registrado. Perda: ${money(d.perda)}`); location.reload();
+}
+
+async function excluirLote(id, codigo) {
+    if (!confirm(`Excluir o lote ${codigo}?`)) return;
+    const r = await fetch(`/api/v1/lote/${id}`, {method:'DELETE'}); const d = await r.json(); if (!r.ok) return alert(d.erro || 'Erro ao excluir'); alert('Lote excluído.'); location.reload();
+}
+
+carregarTudo();
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Movimentações — EcoStock{% endblock %}
+{% block page_title %}Saídas e Movimentações{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-arrows-rotate" style="margin-right:8px;color:var(--accent)"></i>Histórico de Movimentações</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <input id="filtroBusca" class="form-control" style="min-width:260px" placeholder="Buscar produto, lote, motivo ou observação..." oninput="carregar()">
+            <select id="filtroTipo" class="form-control" style="min-width:220px" onchange="carregar()">
+                <option value="">Todos os tipos</option>
+                <option value="ENTRADA">ENTRADA</option>
+                <option value="SAIDA">SAÍDA</option>
+                <option value="AJUSTE_POSITIVO">AJUSTE POSITIVO</option>
+                <option value="AJUSTE_NEGATIVO">AJUSTE NEGATIVO</option>
+                <option value="DESCARTE_VENCIDO">DESCARTE VENCIDO</option>
+                <option value="AVARIA">AVARIA</option>
+                <option value="EXCLUSAO">EXCLUSÃO</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th><th>Tipo</th><th>Produto</th><th>Lote</th><th>Qtd</th>
+                    <th>Antes</th><th>Depois</th><th>Motivo</th><th>Valor</th><th>Usuário</th><th>Obs.</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-mov">
+                <tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text-dim)"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const money = (v) => Number(v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+function badgeTipo(tipo) {
+    const mapa = {
+        'ENTRADA':'badge-ok', 'SAIDA':'badge-alerta', 'AJUSTE_POSITIVO':'badge-ok',
+        'AJUSTE_NEGATIVO':'badge-aviso', 'DESCARTE_VENCIDO':'badge-vencido',
+        'AVARIA':'badge-vencido', 'EXCLUSAO':'badge-vencido'
+    };
+    return mapa[tipo] || 'badge-ok';
+}
+
+async function carregar() {
+    const tipo = document.getElementById('filtroTipo').value;
+    const q = document.getElementById('filtroBusca').value;
+    const url = `/api/v1/movimentacoes?tipo=${encodeURIComponent(tipo)}&q=${encodeURIComponent(q)}`;
+    const res = await fetch(url);
+    const dados = await res.json();
+    const tbody = document.getElementById('tbody-mov');
+    if (!dados.length) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text-dim)">Nenhuma movimentação encontrada.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = dados.map(item => `
+        <tr>
+            <td>${new Date(item.criado_em).toLocaleString('pt-BR')}</td>
+            <td><span class="badge ${badgeTipo(item.tipo_movimento)}">${item.tipo_movimento}</span></td>
+            <td><strong>${item.produto_nome}</strong></td>
+            <td>${item.codigo_lote || '—'}</td>
+            <td>${Number(item.quantidade).toFixed(2)} ${item.unidade || ''}</td>
+            <td>${item.quantidade_anterior === null ? '—' : Number(item.quantidade_anterior).toFixed(2)}</td>
+            <td>${item.quantidade_posterior === null ? '—' : Number(item.quantidade_posterior).toFixed(2)}</td>
+            <td>${item.motivo || '—'}</td>
+            <td title="${money(item.valor_unitario)} / unidade">${money(item.valor_total)}</td>
+            <td>${item.usuario || 'sistema'}</td>
+            <td>${item.observacao || '—'}</td>
+        </tr>
+    `).join('');
+}
+carregar();
+</script>
+{% endblock %}

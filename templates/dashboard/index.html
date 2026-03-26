@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — EcoStock{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block topbar_actions %}
+{% if current_user.is_admin() %}
+<button class="btn btn-ghost btn-sm" id="btnTestarEmail" title="Verificar alertas agora">
+    <i class="fas fa-bell"></i> Testar Alertas
+</button>
+{% endif %}
+<span style="font-size:0.8rem;color:var(--text-dim)" id="data-atual"></span>
+{% endblock %}
+
+{% block content %}
+{% if current_user.is_liberacao() %}
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center">
+    <div style="width:90px;height:90px;background:rgba(255,179,0,0.1);border:1px solid rgba(255,179,0,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:var(--warning);margin-bottom:24px">
+        <i class="fas fa-user-clock"></i>
+    </div>
+    <h2 style="font-family:'Syne',sans-serif;font-size:1.5rem;margin-bottom:10px">Aguardando Liberação</h2>
+    <p style="color:var(--text-dim);max-width:400px;line-height:1.6">Seu cadastro foi recebido. O administrador será notificado e irá ativar suas permissões em breve.</p>
+</div>
+{% else %}
+<div class="stats-grid" style="margin-bottom:28px">
+    <div class="stat-card danger"><div class="stat-icon danger"><i class="fas fa-calendar-xmark"></i></div><div class="stat-info"><label>Vencidos</label><div class="val danger" id="count-vencidos">—</div><small>Lotes fora do prazo e bloqueados para saída normal.</small></div></div>
+    <div class="stat-card warning"><div class="stat-icon warning"><i class="fas fa-triangle-exclamation"></i></div><div class="stat-info"><label>Crítico (7 dias)</label><div class="val warning" id="count-critico">—</div><small>Itens que exigem ação imediata do estoque.</small></div></div>
+    <div class="stat-card info"><div class="stat-icon info"><i class="fas fa-sack-dollar"></i></div><div class="stat-info"><label>Valor em estoque</label><div class="val info money" id="count-valor-estoque">—</div><small>Capital atual investido com base no custo dos lotes.</small></div></div>
+    <div class="stat-card danger"><div class="stat-icon danger"><i class="fas fa-money-bill-trend-up"></i></div><div class="stat-info"><label>Perdas acumuladas</label><div class="val danger money" id="count-perdas">—</div><small>Descartes, avarias e perdas já registradas.</small></div></div>
+    <div class="stat-card warning"><div class="stat-icon warning"><i class="fas fa-box-open"></i></div><div class="stat-info"><label>Estoque baixo</label><div class="val warning" id="count-baixo">—</div><small>Produtos abaixo do mínimo configurado.</small></div></div>
+    <div class="stat-card info"><div class="stat-icon info"><i class="fas fa-ban"></i></div><div class="stat-info"><label>Capital vencido parado</label><div class="val info money" id="count-vencido-custo">—</div><small>Valor imobilizado em lotes vencidos.</small></div></div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-fire" style="color:var(--danger);margin-right:8px"></i>Lotes Que Precisam de Atenção</h3>
+            <a href="/inventario" class="btn btn-ghost btn-sm">Ver inventário <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Produto</th><th>Lote</th><th>Qtd</th><th>Validade</th><th>Status</th><th>Valor custo</th></tr></thead>
+                <tbody id="tabela-alertas"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-timeline" style="color:var(--accent);margin-right:8px"></i>Últimas Movimentações</h3>
+            <a href="/movimentacoes" class="btn btn-ghost btn-sm">Ver histórico <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th>Qtd</th><th>Valor</th></tr></thead>
+                <tbody id="tabela-movimentos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const money = (v) => Number(v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
+document.getElementById('data-atual').innerText = new Date().toLocaleDateString('pt-BR', {
+    weekday:'long', day:'numeric', month:'long', year:'numeric'
+});
+
+function badge(tipo) {
+    if (tipo === 'VENCIDO') return 'badge-vencido';
+    if (tipo === 'Crítico') return 'badge-alerta';
+    if (tipo === 'Alerta') return 'badge-aviso';
+    return 'badge-ok';
+}
+
+async function carregarDashboard() {
+    const [rEstoque, rResumo] = await Promise.all([
+        fetch('/api/v1/estoque'),
+        fetch('/api/v1/resumo-estoque')
+    ]);
+    const estoque = await rEstoque.json();
+    const resumo = await rResumo.json();
+    const totais = resumo.totais;
+
+    document.getElementById('count-vencidos').innerText = totais.vencidos;
+    document.getElementById('count-critico').innerText = totais.criticos;
+    document.getElementById('count-baixo').innerText = totais.estoque_baixo;
+    document.getElementById('count-valor-estoque').innerText = money(totais.valor_estoque_custo);
+    document.getElementById('count-perdas').innerText = money(totais.perdas_total);
+    document.getElementById('count-vencido-custo').innerText = money(totais.valor_vencido_custo);
+
+    const urgentes = estoque.filter(i => i.dias_restantes <= 15).sort((a, b) => a.dias_restantes - b.dias_restantes);
+    const tbodyAlertas = document.getElementById('tabela-alertas');
+    if (!urgentes.length) {
+        tbodyAlertas.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:40px">Nenhum lote crítico no momento.</td></tr>';
+    } else {
+        tbodyAlertas.innerHTML = urgentes.slice(0, 10).map(item => {
+            const status = item.status;
+            return `<tr>
+                <td><strong>${item.nome}</strong></td>
+                <td>${item.codigo_lote}</td>
+                <td>${Number(item.quantidade_atual).toFixed(2)}</td>
+                <td>${new Date(item.data_validade + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                <td><span class="badge ${badge(status)}">${status}</span></td>
+                <td>${money(item.valor_lote_custo)}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    const tbodyMov = document.getElementById('tabela-movimentos');
+    const movimentos = resumo.movimentacoes_recentes || [];
+    if (!movimentos.length) {
+        tbodyMov.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:40px">Nenhuma movimentação registrada.</td></tr>';
+    } else {
+        tbodyMov.innerHTML = movimentos.map(item => `
+            <tr>
+                <td>${new Date(item.criado_em).toLocaleString('pt-BR')}</td>
+                <td><span class="badge ${item.tipo_movimento === 'ENTRADA' ? 'badge-ok' : (item.tipo_movimento === 'DESCARTE_VENCIDO' || item.tipo_movimento === 'AVARIA' ? 'badge-vencido' : 'badge-alerta')}">${item.tipo_movimento}</span></td>
+                <td><strong>${item.produto_nome}</strong><br><small style="color:var(--text-dim)">${item.codigo_lote || 'sem lote'} • ${item.motivo || 'sem motivo'}</small></td>
+                <td>${Number(item.quantidade).toFixed(2)}</td>
+                <td>${money(item.valor_total)}</td>
+            </tr>
+        `).join('');
+    }
+}
+
+const btnTestar = document.getElementById('btnTestarEmail');
+if (btnTestar) {
+    btnTestar.addEventListener('click', async () => {
+        btnTestar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        btnTestar.disabled = true;
+        try {
+            const r = await fetch('/api/v1/notificar/testar', { method:'POST' });
+            const d = await r.json();
+            alert(d.msg || 'Verificação concluída!');
+        } catch(e) {
+            alert('Erro ao testar');
+        }
+        btnTestar.innerHTML = '<i class="fas fa-bell"></i> Testar Alertas';
+        btnTestar.disabled = false;
+    });
+}
+
+carregarDashboard();
+</script>
+{% endblock %}

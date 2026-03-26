@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Entradas — EcoStock{% endblock %}
+{% block page_title %}Entradas e Cadastro{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-tag" style="margin-right:8px;color:var(--text-dim)"></i>Novo Produto</h3></div>
+        <div class="card-body">
+            <form id="formProduto">
+                <div class="form-group"><label>Nome do Produto</label><input type="text" name="nome" class="form-control" required></div>
+                <div class="form-group"><label>Categoria</label>
+                    <select name="categoria" class="form-control">
+                        <option value="Mercearia">Mercearia</option><option value="Laticínios">Laticínios</option>
+                        <option value="Hortifruti">Hortifruti</option><option value="Carnes">Carnes</option>
+                        <option value="Bebidas">Bebidas</option><option value="Limpeza">Limpeza</option>
+                        <option value="Medicamentos">Medicamentos</option><option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="grid-2" style="gap:12px">
+                    <div class="form-group"><label>Unidade</label><input type="text" name="unidade" class="form-control" placeholder="UN, KG, CX..." required></div>
+                    <div class="form-group"><label>Estoque mínimo</label><input type="number" name="minimo" class="form-control" value="1" step="0.01" min="0"></div>
+                </div>
+                <div class="form-group"><label>Preço de referência (R$)</label><input type="number" name="preco_referencia" class="form-control" value="0" step="0.01" min="0"></div>
+                <button type="submit" class="btn btn-ghost" style="width:100%"><i class="fas fa-save"></i> Salvar produto</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-truck-ramp-box" style="margin-right:8px;color:var(--accent)"></i>Entrada de Lote</h3></div>
+        <div class="card-body">
+            <form id="formLote">
+                <div class="form-group"><label>Produto</label>
+                    <select name="id_produto" class="form-control" required>
+                        <option value="">— Selecionar produto —</option>
+                        {% for p in produtos %}
+                        <option value="{{ p.id }}">{{ p.nome }} — saldo {{ '%.2f'|format(p.estoque_total or 0) }} {{ p.unidade }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="grid-2" style="gap:12px">
+                    <div class="form-group"><label>Código do lote</label><input type="text" name="codigo" class="form-control" required></div>
+                    <div class="form-group"><label>Fornecedor</label><input type="text" name="fornecedor" class="form-control" placeholder="Opcional"></div>
+                </div>
+                <div class="grid-2" style="gap:12px">
+                    <div class="form-group"><label>Quantidade de entrada</label><input type="number" step="0.01" name="quantidade" class="form-control" min="0.01" required></div>
+                    <div class="form-group"><label>Data de validade</label><input type="date" name="validade" class="form-control" required></div>
+                </div>
+                <div class="grid-2" style="gap:12px">
+                    <div class="form-group"><label>Custo unitário (R$)</label><input type="number" step="0.01" name="custo_unitario" class="form-control" min="0" value="0"></div>
+                    <div class="form-group"><label>Preço de venda (R$)</label><input type="number" step="0.01" name="preco_venda_unitario" class="form-control" min="0" value="0"></div>
+                </div>
+                <p style="margin:4px 0 14px;color:var(--text-dim);font-size:.9rem">Regras: não permite lote já vencido e não deixa preço de venda menor que custo.</p>
+                <button type="submit" class="btn btn-primary" style="width:100%"><i class="fas fa-check-circle"></i> Registrar entrada</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:20px">
+    <div class="card-header"><h3><i class="fas fa-list-check" style="margin-right:8px;color:var(--warning)"></i>Produtos cadastrados</h3></div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Produto</th><th>Categoria</th><th>Unidade</th><th>Preço ref.</th><th>Saldo atual</th><th>Valor em estoque</th></tr></thead>
+            <tbody>
+                {% for p in produtos %}
+                <tr>
+                    <td><strong>{{ p.nome }}</strong></td>
+                    <td>{{ p.categoria }}</td>
+                    <td>{{ p.unidade }}</td>
+                    <td>R$ {{ '%.2f'|format(p.preco_referencia or 0) }}</td>
+                    <td>{{ '%.2f'|format(p.estoque_total or 0) }}</td>
+                    <td>R$ {{ '%.2f'|format(p.valor_estoque_custo or 0) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">Nenhum produto cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function avisar(msg) { alert(msg); }
+
+document.getElementById('formProduto').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(e.target).entries());
+    const res = await fetch('/api/v1/novo_produto', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) return avisar(data.erro || 'Erro ao cadastrar produto');
+    avisar('Produto cadastrado com sucesso.');
+    location.reload();
+});
+
+document.getElementById('formLote').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(e.target).entries());
+    const res = await fetch('/api/v1/novo_lote', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) return avisar(data.erro || 'Erro ao registrar lote');
+    avisar('Entrada registrada com sucesso.');
+    location.reload();
+});
+</script>
+{% endblock %}

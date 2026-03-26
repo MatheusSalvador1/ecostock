@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Acesso Negado — EcoStock{% endblock %}
+{% block page_title %}Acesso Negado{% endblock %}
+{% block content %}
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center">
+    <div style="width:80px;height:80px;background:rgba(239,83,80,0.1);border:1px solid rgba(239,83,80,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--danger);margin-bottom:20px">
+        <i class="fas fa-ban"></i>
+    </div>
+    <h2 style="font-family:'Syne',sans-serif;margin-bottom:8px">Acesso Não Autorizado</h2>
+    <p style="color:var(--text-dim);max-width:380px">Você não tem permissão para acessar esta área. Caso precise desse acesso, solicite ao administrador.</p>
+    <a href="/" class="btn btn-primary" style="margin-top:24px"><i class="fas fa-house"></i> Voltar ao Dashboard</a>
+</div>
+{% endblock %}

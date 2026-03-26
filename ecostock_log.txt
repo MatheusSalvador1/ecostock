@@ -1,0 +1,59 @@
+EcoStock Setup Log 
+Data: 25/03/2026 23:32:54,76 
+ 
+[1/5] Verificando Python... 
+'python' não é reconhecido como um comando interno
+ou externo, um programa operável ou um arquivo em lotes.
+Python 3.15.0a7
+[2/5] Verificando pip... 
+pip 26.0.1 from C:\Users\jhons\AppData\Local\Programs\Python\Python315\Lib\site-packages\pip (python 3.15)
+[3/5] Ambiente virtual... 
+'crumb' não é reconhecido como um comando interno
+ou externo, um programa operável ou um arquivo em lotes.
+[4/5] Instalando dependencias... 
+Requirement already satisfied: pip in .\venv\Lib\site-packages (26.0.1)
+Requirement already satisfied: Flask==3.0.3 in .\venv\Lib\site-packages (from -r requirements.txt (line 1)) (3.0.3)
+Requirement already satisfied: Flask-Login==0.6.3 in .\venv\Lib\site-packages (from -r requirements.txt (line 2)) (0.6.3)
+Requirement already satisfied: Flask-Mail==0.10.0 in .\venv\Lib\site-packages (from -r requirements.txt (line 3)) (0.10.0)
+Requirement already satisfied: PyMySQL==1.1.1 in .\venv\Lib\site-packages (from -r requirements.txt (line 4)) (1.1.1)
+Requirement already satisfied: bcrypt==4.2.0 in .\venv\Lib\site-packages (from -r requirements.txt (line 5)) (4.2.0)
+Requirement already satisfied: python-dotenv==1.0.1 in .\venv\Lib\site-packages (from -r requirements.txt (line 6)) (1.0.1)
+Requirement already satisfied: APScheduler==3.10.4 in .\venv\Lib\site-packages (from -r requirements.txt (line 7)) (3.10.4)
+Requirement already satisfied: Werkzeug==3.0.3 in .\venv\Lib\site-packages (from -r requirements.txt (line 8)) (3.0.3)
+Requirement already satisfied: Jinja2>=3.1.2 in .\venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (3.1.6)
+Requirement already satisfied: itsdangerous>=2.1.2 in .\venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (2.2.0)
+Requirement already satisfied: click>=8.1.3 in .\venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (8.3.1)
+Requirement already satisfied: blinker>=1.6.2 in .\venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (1.9.0)
+Requirement already satisfied: six>=1.4.0 in .\venv\Lib\site-packages (from APScheduler==3.10.4->-r requirements.txt (line 7)) (1.17.0)
+Requirement already satisfied: pytz in .\venv\Lib\site-packages (from APScheduler==3.10.4->-r requirements.txt (line 7)) (2026.1.post1)
+Requirement already satisfied: tzlocal!=3.*,>=2.0 in .\venv\Lib\site-packages (from APScheduler==3.10.4->-r requirements.txt (line 7)) (5.3.1)
+Requirement already satisfied: MarkupSafe>=2.1.1 in .\venv\Lib\site-packages (from Werkzeug==3.0.3->-r requirements.txt (line 8)) (3.0.3)
+Requirement already satisfied: colorama in .\venv\Lib\site-packages (from click>=8.1.3->Flask==3.0.3->-r requirements.txt (line 1)) (0.4.6)
+Requirement already satisfied: tzdata in .\venv\Lib\site-packages (from tzlocal!=3.*,>=2.0->APScheduler==3.10.4->-r requirements.txt (line 7)) (2025.3)
+[5/5] Verificando .env... 
+ Iniciando servidor... 
+Traceback (most recent call last):
+  File "C:\Users\jhons\Downloads\ecostock\run.py", line 4, in <module>
+    app = create_app()
+          ^^^^^^^^^^^^
+  File "C:\Users\jhons\Downloads\ecostock\app\__init__.py", line 62, in create_app
+    ensure_admin_user()
+  File "C:\Users\jhons\Downloads\ecostock\app\services\bootstrap.py", line 23, in ensure_admin_user
+    existing = query('SELECT * FROM usuarios WHERE login = %s', (login,), fetchone=True)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jhons\Downloads\ecostock\app\utils\db.py", line 36, in query
+    conn = get_db()
+           ^^^^^^^^
+  File "C:\Users\jhons\Downloads\ecostock\app\utils\db.py", line 11, in get_db
+    g.db = pymysql.connect(
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\jhons\Downloads\ecostock\venv\Lib\site-packages\pymysql\connections.py", line 361, in __init__
+    self.connect()
+  File "C:\Users\jhons\Downloads\ecostock\venv\Lib\site-packages\pymysql\connections.py", line 669, in connect
+    self._request_authentication()
+  File "C:\Users\jhons\Downloads\ecostock\venv\Lib\site-packages\pymysql\connections.py", line 971, in _request_authentication
+    auth_packet = self._process_auth(plugin_name, auth_packet)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jhons\Downloads\ecostock\venv\Lib\site-packages\pymysql\connections.py", line 1056, in _process_auth
+    raise err.OperationalError(
+pymysql.err.OperationalError: (2059, "Authentication plugin 'b'auth_gssapi_client'' not configured")

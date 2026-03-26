@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Saídas — EcoStock{% endblock %}
+{% block page_title %}Saídas de Produtos{% endblock %}
+
+{% block content %}
+<div class="stats-grid" style="margin-bottom:20px">
+    <div class="stat-card success"><div class="stat-icon success"><i class="fas fa-check-double"></i></div><div class="stat-info"><label>Produtos com saldo válido</label><div class="val success" id="sum-validos">—</div><small>Itens disponíveis para saída sem bloqueio.</small></div></div>
+    <div class="stat-card warning"><div class="stat-icon warning"><i class="fas fa-hourglass-half"></i></div><div class="stat-info"><label>Produtos com estoque vencido</label><div class="val warning" id="sum-vencidos">—</div><small>Produtos que possuem ao menos um lote vencido.</small></div></div>
+    <div class="stat-card danger"><div class="stat-icon danger"><i class="fas fa-trash-can"></i></div><div class="stat-info"><label>Lotes vencidos</label><div class="val danger" id="sum-lotes-vencidos">—</div><small>Lotes que podem seguir apenas para descarte.</small></div></div>
+    <div class="stat-card info"><div class="stat-icon info"><i class="fas fa-chart-line"></i></div><div class="stat-info"><label>Perdas acumuladas</label><div class="val info money" id="sum-perdas">—</div><small>Impacto financeiro das perdas registradas.</small></div></div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-arrow-up-right-from-square" style="margin-right:8px;color:var(--accent)"></i>Saída FIFO por Produto</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group"><label>Produto</label><select id="fifoProduto" class="form-control" onchange="detalharProduto()"></select></div>
+            <div id="fifoResumo" style="margin-bottom:14px;color:var(--text-dim)">Selecione um produto para ver saldos válidos, vencidos e valor em estoque.</div>
+            <div class="form-group"><label>Quantidade</label><input id="fifoQuantidade" type="number" min="0.01" step="0.01" class="form-control"></div>
+            <div class="form-group"><label>Motivo da saída</label>
+                <select id="fifoMotivo" class="form-control">
+                    <option value="">Selecione</option>
+                    <option value="Venda">Venda</option><option value="Consumo interno">Consumo interno</option>
+                    <option value="Transferência">Transferência</option><option value="Doação">Doação</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Observação</label><input id="fifoObs" type="text" class="form-control" placeholder="Detalhes adicionais"></div>
+            <button class="btn btn-primary" style="width:100%" onclick="executarFIFO()"><i class="fas fa-play"></i> Aplicar saída FIFO</button>
+            <p style="margin-top:10px;color:var(--text-dim);font-size:.85rem">A saída FIFO usa apenas lotes válidos e ignora automaticamente lotes vencidos.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-layer-group" style="margin-right:8px;color:var(--warning)"></i>Saída Manual por Lote</h3></div>
+        <div class="card-body">
+            <div class="form-group"><label>Produto</label><select id="manualProduto" class="form-control" onchange="carregarLotesManuais()"></select></div>
+            <div class="form-group"><label>Lote disponível</label><select id="manualLote" class="form-control"></select></div>
+            <div class="form-group"><label>Quantidade</label><input id="manualQuantidade" type="number" min="0.01" step="0.01" class="form-control"></div>
+            <div class="form-group"><label>Motivo da saída</label>
+                <select id="manualMotivo" class="form-control">
+                    <option value="">Selecione</option>
+                    <option value="Venda">Venda</option><option value="Consumo interno">Consumo interno</option>
+                    <option value="Transferência">Transferência</option><option value="Doação">Doação</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Observação</label><input id="manualObs" type="text" class="form-control" placeholder="Detalhes adicionais"></div>
+            <button class="btn btn-primary" style="width:100%" onclick="executarSaidaManual()"><i class="fas fa-box-open"></i> Aplicar saída no lote</button>
+            <p style="margin-top:10px;color:var(--text-dim);font-size:.85rem">A saída manual também bloqueia vencidos. Para lotes vencidos use o descarte abaixo.</p>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:20px">
+    <div class="card-header"><h3><i class="fas fa-triangle-exclamation" style="margin-right:8px;color:var(--danger)"></i>Descarte de Lotes Vencidos</h3></div>
+    <div class="card-body">
+        <div class="form-grid-wide">
+            <div class="form-group"><label>Lote vencido</label><select id="descLote" class="form-control"></select></div>
+            <div class="form-group"><label>Saldo</label><input id="descSaldo" class="form-control" disabled></div>
+            <div class="form-group"><label>Qtd.</label><input id="descQtd" type="number" min="0.01" step="0.01" class="form-control"></div>
+            <div class="form-group"><label>Motivo</label><select id="descMotivo" class="form-control"><option value="">Selecione</option><option value="Vencimento">Vencimento</option><option value="Contaminação">Contaminação</option><option value="Determinação interna">Determinação interna</option></select></div>
+            <div class="form-group"><label>Observação</label><input id="descObs" class="form-control" placeholder="Detalhes"></div>
+            <button class="btn btn-danger" onclick="descartar()"><i class="fas fa-trash-can"></i> Descartar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let produtos = [], vencidos = [];
+const money = (v) => Number(v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+const qtd = (v) => Number(v || 0).toFixed(2);
+
+async function init() {
+    const [rp, re, rr] = await Promise.all([fetch('/api/v1/produtos'), fetch('/api/v1/estoque'), fetch('/api/v1/resumo-estoque')]);
+    produtos = await rp.json();
+    const estoque = await re.json();
+    const resumo = await rr.json();
+    vencidos = estoque.filter(x => x.vencido);
+
+    document.getElementById('sum-validos').innerText = produtos.filter(p => Number(p.estoque_valido) > 0).length;
+    document.getElementById('sum-vencidos').innerText = produtos.filter(p => Number(p.estoque_vencido) > 0).length;
+    document.getElementById('sum-lotes-vencidos').innerText = vencidos.length;
+    document.getElementById('sum-perdas').innerText = money(resumo.totais.perdas_total);
+
+    const opts = '<option value="">— Selecione —</option>' + produtos.map(p => `<option value="${p.id}">${p.nome} — válido ${qtd(p.estoque_valido)} ${p.unidade}</option>`).join('');
+    document.getElementById('fifoProduto').innerHTML = opts;
+    document.getElementById('manualProduto').innerHTML = opts;
+    preencherVencidos();
+}
+
+function detalharProduto() {
+    const id = Number(document.getElementById('fifoProduto').value);
+    const p = produtos.find(x => x.id === id);
+    document.getElementById('fifoResumo').innerHTML = p
+        ? `Saldo válido: <strong>${qtd(p.estoque_valido)} ${p.unidade}</strong> • Saldo vencido: <strong>${qtd(p.estoque_vencido)} ${p.unidade}</strong> • Valor em estoque: <strong>${money(p.valor_estoque_custo)}</strong>`
+        : 'Selecione um produto para ver saldos válidos, vencidos e valor em estoque.';
+}
+
+async function carregarLotesManuais() {
+    const id = document.getElementById('manualProduto').value;
+    const el = document.getElementById('manualLote');
+    if (!id) return el.innerHTML = '<option value="">— Selecione o produto —</option>';
+    const r = await fetch(`/api/v1/produto/${id}/lotes-disponiveis`);
+    const lotes = await r.json();
+    el.innerHTML = lotes.length
+        ? lotes.map(l => `<option value="${l.id}">${l.codigo_lote} • saldo ${qtd(l.quantidade_atual)} • custo ${money(l.custo_unitario)} • vence ${new Date(l.data_validade+'T12:00:00').toLocaleDateString('pt-BR')}</option>`).join('')
+        : '<option value="">Nenhum lote válido disponível</option>';
+}
+
+function preencherVencidos() {
+    const el = document.getElementById('descLote');
+    if (!vencidos.length) {
+        el.innerHTML = '<option value="">Nenhum lote vencido</option>';
+        document.getElementById('descSaldo').value = '0,00';
+        return;
+    }
+    el.innerHTML = vencidos.map(l => `<option value="${l.id}" data-saldo="${l.quantidade_atual}">${l.nome} • ${l.codigo_lote} • saldo ${qtd(l.quantidade_atual)} • perda ${money(l.valor_lote_custo)}</option>`).join('');
+    atualizarSaldoDescarte();
+    el.onchange = atualizarSaldoDescarte;
+}
+
+function atualizarSaldoDescarte() {
+    const opt = document.querySelector('#descLote option:checked');
+    document.getElementById('descSaldo').value = opt ? qtd(opt.dataset.saldo) : '0,00';
+}
+
+async function executarFIFO() {
+    const produtoId = document.getElementById('fifoProduto').value;
+    const quantidade = document.getElementById('fifoQuantidade').value;
+    const motivo = document.getElementById('fifoMotivo').value;
+    const observacao = document.getElementById('fifoObs').value;
+    const r = await fetch(`/api/v1/produto/${produtoId}/saida_fifo`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ quantidade, motivo, observacao })
+    });
+    const d = await r.json();
+    if (!r.ok) return alert(d.erro || 'Erro ao processar saída FIFO');
+    alert('Saída FIFO registrada com sucesso.');
+    location.reload();
+}
+
+async function executarSaidaManual() {
+    const loteId = document.getElementById('manualLote').value;
+    const quantidade = document.getElementById('manualQuantidade').value;
+    const motivo = document.getElementById('manualMotivo').value;
+    const observacao = document.getElementById('manualObs').value;
+    const r = await fetch(`/api/v1/lote/${loteId}/baixa`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ quantidade, motivo, observacao })
+    });
+    const d = await r.json();
+    if (!r.ok) return alert(d.erro || 'Erro ao processar saída manual');
+    alert('Saída manual registrada com sucesso.');
+    location.reload();
+}
+
+async function descartar() {
+    const loteId = document.getElementById('descLote').value;
+    const quantidade = document.getElementById('descQtd').value;
+    const motivo = document.getElementById('descMotivo').value;
+    const observacao = document.getElementById('descObs').value;
+    const r = await fetch(`/api/v1/lote/${loteId}/descartar`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ quantidade, motivo, observacao })
+    });
+    const d = await r.json();
+    if (!r.ok) return alert(d.erro || 'Erro ao descartar lote');
+    alert(`Descarte registrado. Perda calculada: ${money(d.perda)}`);
+    location.reload();
+}
+
+init();
+</script>
+{% endblock %}

@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Usuários — EcoStock{% endblock %}
+{% block page_title %}Gestão de Usuários{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="table-wrapper">
+        <table id="tabela-usuarios">
+            <thead>
+                <tr>
+                    <th>Usuário</th>
+                    <th>Nível</th>
+                    <th>Status</th>
+                    <th title="Visualizar Auditoria"><i class="fas fa-shield-halved"></i> Auditoria</th>
+                    <th title="Editar Estoque"><i class="fas fa-pen-to-square"></i> Editar</th>
+                    <th title="Excluir Itens"><i class="fas fa-trash"></i> Excluir</th>
+                    <th title="Cadastrar Produtos"><i class="fas fa-plus"></i> Cadastro</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-users">
+                <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim)">
+                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal senha -->
+<div id="modalSenha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px">
+        <h3 style="font-family:'Syne',sans-serif;margin-bottom:6px">Redefinir Senha</h3>
+        <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:20px" id="modalSenhaUser"></p>
+        <div class="form-group">
+            <label>Nova Senha (mín. 6 caracteres)</label>
+            <input type="password" id="inputNovaSenha" class="form-control" minlength="6" placeholder="••••••••">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-danger" style="flex:1" onclick="confirmarSenha()"><i class="fas fa-key"></i> Redefinir</button>
+            <button class="btn btn-ghost" style="flex:1" onclick="fecharModalSenha()">Cancelar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let uidSenha = null;
+const meuId  = {{ current_user.id }};
+
+async function carregar() {
+    const res = await fetch('/api/v1/usuarios/lista');
+    const lista = await res.json();
+    renderizar(lista);
+}
+
+function renderizar(lista) {
+    const tbody = document.getElementById('tbody-users');
+    tbody.innerHTML = lista.map(u => {
+        const nivelCor = {Administrador:'var(--accent)',Operador:'var(--info)',Liberacao:'var(--warning)'}[u.nivel_acesso] || 'var(--text-dim)';
+        const isMe = u.id === meuId;
+        const disabled = isMe ? 'disabled title="Você não pode alterar a si mesmo"' : '';
+
+        return `<tr id="row-${u.id}">
+            <td>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <div style="width:32px;height:32px;background:${nivelCor}18;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:${nivelCor}">
+                        ${u.login[0].toUpperCase()}
+                    </div>
+                    <div>
+                        <strong style="font-size:0.9rem">${u.login}</strong>
+                        ${u.email ? `<br><small style="color:var(--text-dim)">${u.email}</small>` : ''}
+                    </div>
+                </div>
+            </td>
+            <td>
+                <select id="nivel-${u.id}" class="form-control" style="width:auto;padding:5px 8px;font-size:0.8rem" ${disabled}>
+                    <option value="Liberacao"     ${u.nivel_acesso==='Liberacao'?'selected':''}>Liberação</option>
+                    <option value="Operador"      ${u.nivel_acesso==='Operador'?'selected':''}>Operador</option>
+                    <option value="Administrador" ${u.nivel_acesso==='Administrador'?'selected':''}>Admin</option>
+                </select>
+            </td>
+            <td>
+                <select id="status-${u.id}" class="form-control" style="width:auto;padding:5px 8px;font-size:0.8rem" ${disabled}>
+                    <option value="1" ${u.ativo?'selected':''}>Ativo</option>
+                    <option value="0" ${!u.ativo?'selected':''}>Inativo</option>
+                </select>
+            </td>
+            <td style="text-align:center">
+                <label class="switch">
+                    <input type="checkbox" id="audit-${u.id}" ${u.can_view_audit?'checked':''} ${disabled}>
+                    <span class="slider"></span>
+                </label>
+            </td>
+            <td style="text-align:center">
+                <label class="switch">
+                    <input type="checkbox" id="edit-${u.id}" ${u.can_edit_stock?'checked':''} ${disabled}>
+                    <span class="slider"></span>
+                </label>
+            </td>
+            <td style="text-align:center">
+                <label class="switch">
+                    <input type="checkbox" id="delete-${u.id}" ${u.can_delete_items?'checked':''} ${disabled}>
+                    <span class="slider"></span>
+                </label>
+            </td>
+            <td style="text-align:center">
+                <label class="switch">
+                    <input type="checkbox" id="add-${u.id}" ${u.can_add_product?'checked':''} ${disabled}>
+                    <span class="slider"></span>
+                </label>
+            </td>
+            <td>
+                <div style="display:flex;gap:6px">
+                    ${!isMe ? `
+                    <button class="btn btn-primary btn-sm btn-icon" onclick="salvar(${u.id})" title="Salvar">
+                        <i class="fas fa-save"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-sm btn-icon" onclick="abrirModalSenha(${u.id}, '${u.login}')" title="Redefinir Senha">
+                        <i class="fas fa-key"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm btn-icon" onclick="excluir(${u.id}, '${u.login}')" title="Excluir Usuário">
+                        <i class="fas fa-trash"></i>
+                    </button>` : `<span style="color:var(--text-dim);font-size:0.75rem">você</span>`}
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function salvar(id) {
+    const payload = {
+        nivel:  document.getElementById(`nivel-${id}`).value,
+        ativo:  parseInt(document.getElementById(`status-${id}`).value),
+        audit:  document.getElementById(`audit-${id}`).checked ? 1 : 0,
+        edit:   document.getElementById(`edit-${id}`).checked  ? 1 : 0,
+        delete: document.getElementById(`delete-${id}`).checked? 1 : 0,
+        add:    document.getElementById(`add-${id}`).checked   ? 1 : 0,
+    };
+    const res = await fetch(`/api/v1/usuario/${id}/atualizar`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+        const row = document.querySelector(`#row-${id}`);
+        row.style.animation = 'none';
+        row.style.background = 'rgba(0,230,118,0.08)';
+        setTimeout(() => row.style.background = '', 1500);
+    } else alert('Erro ao salvar.');
+}
+
+async function excluir(id, login) {
+    if (!confirm(`Excluir o usuário "${login}"? Esta ação é irreversível.`)) return;
+    const res = await fetch(`/api/v1/usuario/${id}`, { method:'DELETE' });
+    if (res.ok) carregar();
+    else alert('Erro ao excluir.');
+}
+
+function abrirModalSenha(id, login) {
+    uidSenha = id;
+    document.getElementById('modalSenhaUser').innerText = `Usuário: ${login}`;
+    document.getElementById('inputNovaSenha').value = '';
+    document.getElementById('modalSenha').style.display = 'flex';
+}
+function fecharModalSenha() { document.getElementById('modalSenha').style.display = 'none'; }
+
+async function confirmarSenha() {
+    const nova = document.getElementById('inputNovaSenha').value;
+    if (nova.length < 6) return alert('Mínimo 6 caracteres.');
+    const res = await fetch(`/api/v1/usuario/${uidSenha}/senha`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ nova_senha: nova })
+    });
+    if (res.ok) { fecharModalSenha(); alert('Senha redefinida com sucesso!'); }
+    else alert('Erro ao redefinir senha.');
+}
+
+carregar();
+</script>
+{% endblock %}

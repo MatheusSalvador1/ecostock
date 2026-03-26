@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Auditoria — EcoStock{% endblock %}
+{% block page_title %}Logs de Auditoria{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-ghost btn-sm" onclick="exportarCSV()"><i class="fas fa-download"></i> Exportar</button>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="card" style="margin-bottom:20px">
+    <div class="card-body" style="padding:16px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="form-group" style="flex:2;min-width:150px;margin:0">
+                <label style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;display:block">Tipo de Ação</label>
+                <input type="text" id="fTipo" class="form-control" placeholder="Ex: CADASTRO, BAIXA..." oninput="filtrar()">
+            </div>
+            <div class="form-group" style="flex:1;min-width:120px;margin:0">
+                <label style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;display:block">Resultado</label>
+                <select id="fResultado" class="form-control" onchange="filtrar()">
+                    <option value="">Todos</option>
+                    <option value="Sucesso">Sucesso</option>
+                    <option value="Falha">Falha</option>
+                    <option value="Bloqueado">Bloqueado</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:120px;margin:0">
+                <label style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;display:block">Usuário</label>
+                <input type="text" id="fLogin" class="form-control" placeholder="Login..." oninput="filtrar()">
+            </div>
+            <div class="form-group" style="flex:1;min-width:130px;margin:0">
+                <label style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;display:block">De</label>
+                <input type="date" id="fDataIni" class="form-control" onchange="filtrar()">
+            </div>
+            <div class="form-group" style="flex:1;min-width:130px;margin:0">
+                <label style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;display:block">Até</label>
+                <input type="date" id="fDataFim" class="form-control" onchange="filtrar()">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Usuário</th>
+                    <th>Ação</th>
+                    <th>Descrição</th>
+                    <th>IP</th>
+                    <th>Resultado</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-logs">
+                <tr><td colspan="6" style="text-align:center;padding:48px;color:var(--text-dim)">
+                    <i class="fas fa-spinner fa-spin"></i> Carregando logs...
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let todoLogs = [];
+
+async function carregar() {
+    const params = new URLSearchParams({
+        tipo:      document.getElementById('fTipo').value,
+        resultado: document.getElementById('fResultado').value,
+        login:     document.getElementById('fLogin').value,
+        data_ini:  document.getElementById('fDataIni').value,
+        data_fim:  document.getElementById('fDataFim').value,
+        limite: 500
+    });
+    try {
+        const res = await fetch(`/api/v1/auditoria/logs?${params}`);
+        todoLogs = await res.json();
+        renderizar(todoLogs);
+    } catch(e) { console.error(e); }
+}
+
+function filtrar() { carregar(); }
+
+const TIPO_CORES = {
+    'LOGIN':       'var(--info)',
+    'LOGOUT':      'var(--text-dim)',
+    'CADASTRO':    'var(--green-500)',
+    'EXCLUSAO':    'var(--danger)',
+    'BAIXA':       'var(--warning)',
+    'PERMISSAO':   'var(--accent)',
+    'ACESSO':      'var(--danger)',
+    'SESSAO':      'var(--warning)',
+};
+
+function getCorTipo(tipo) {
+    for (const [k, v] of Object.entries(TIPO_CORES)) {
+        if (tipo.startsWith(k)) return v;
+    }
+    return 'var(--text-dim)';
+}
+
+function renderizar(lista) {
+    const tbody = document.getElementById('tbody-logs');
+    if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--text-dim)">Nenhum log encontrado</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = lista.map(log => {
+        const cor = getCorTipo(log.tipo_acao);
+        const resCor = log.resultado === 'Sucesso' ? 'var(--green-500)' : log.resultado === 'Falha' ? 'var(--danger)' : 'var(--warning)';
+        const resIcon = log.resultado === 'Sucesso' ? 'check-circle' : log.resultado === 'Falha' ? 'times-circle' : 'ban';
+        const dt = new Date(log.data_hora).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+        return `<tr>
+            <td style="font-size:0.8rem;color:var(--text-dim);white-space:nowrap">${dt}</td>
+            <td style="font-size:0.85rem"><code style="background:var(--surface2);padding:2px 8px;border-radius:4px">${log.login_usuario}</code></td>
+            <td><span style="background:${cor}18;color:${cor};padding:3px 9px;border-radius:20px;font-size:0.7rem;font-weight:700;text-transform:uppercase;white-space:nowrap">${log.tipo_acao}</span></td>
+            <td style="font-size:0.85rem;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${log.descricao}">${log.descricao}</td>
+            <td><code style="font-size:0.75rem;color:var(--text-dim)">${log.ip_origem}</code></td>
+            <td><span style="color:${resCor};font-size:0.85rem;font-weight:600"><i class="fas fa-${resIcon}" style="margin-right:5px"></i>${log.resultado}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+function exportarCSV() {
+    const headers = ['Data/Hora','Usuário','Ação','Descrição','IP','Resultado'];
+    const rows = todoLogs.map(l => [l.data_hora, l.login_usuario, l.tipo_acao, l.descricao, l.ip_origem, l.resultado].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+    a.download = `auditoria_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+}
+
+carregar();
+</script>
+{% endblock %}
