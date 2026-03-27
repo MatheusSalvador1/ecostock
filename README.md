@@ -1,3 +1,15 @@
+Alunos:
+Diego de Gusmão Gaseo / matricula:01659279 
+Erick Ayrton Lins Santos / matricula:01606295 
+Fernando Silva De oliveira / matricula:01612125
+Luiz Felipe Bernardo Cavalcante/matricula:01605724 
+Cassio Vinicius da Silva Mota/01584279
+João Matheus Salvador de Carvalho/ matrícula: 01603692
+
+
+
+
+
 # EcoStock Revisado
 
 Versão revisada do projeto EcoStock, preparada para rodar localmente no Windows com XAMPP/MariaDB e dois arquivos `.bat`:
