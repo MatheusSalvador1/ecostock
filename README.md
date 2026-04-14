@@ -73,3 +73,30 @@ DB_NAME=ecostock_db
 
 ## Correção v3
 - Corrigido bug de timeout de sessão no Windows/Flask ao comparar `float` com `timedelta`.
+
+EcoStock - Sprint 2 (Completo)
+1. Backend Funcional
+O backend foi desenvolvido em Flask (Python), utilizando arquitetura modular. O sistema
+implementa autenticação, controle de estoque por lote, saída FIFO, auditoria, perdas e lucro.
+2. Endpoints da API
+Método Rota Descrição
+GET /api/v1/estoque Lista estoque
+POST /api/v1/novo_produto Cadastrar produto
+POST /api/v1/novo_lote Cadastrar lote
+POST /api/v1/produto/<id>/saida_fifo Saída FIFO
+POST /api/v1/lote/<id>/descartar Descarte vencido
+GET /api/v1/movimentacoes Histórico
+GET /api/v1/gestor-resumo Dados financeiros
+3. Exemplo de Requisição
+POST /api/v1/produto/1/saida_fifo { "quantidade": 5, "motivo": "Venda" }
+4. Banco de Dados
+O sistema utiliza MariaDB com tabelas: usuarios, produtos, lotes, movimentacoes_estoque,
+auditoria e notificacoes.
+5. Regras de Negócio
+- Saída FIFO automática - Bloqueio de produtos vencidos - Descarte obrigatório de vencidos -
+Cálculo de lucro e perdas - Auditoria de ações
+6. Execução do Sistema
+Para rodar o sistema: 1. Iniciar MariaDB no XAMPP 2. Rodar 01_instalar.bat 3. Rodar 02_rodar.bat
+4. Acessar http://127.0.0.1:8000 Login: admin / Admin@123
+7. Evolução
+O sistema evoluiu de um modelo conceitual para um sistema funcional com backend real, banco persistente e regras completas.
